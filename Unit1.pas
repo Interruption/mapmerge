@@ -88,6 +88,7 @@ var
 implementation
 
 {$R *.dfm}
+
 //Функция записи в лог.
 function SendLog(Text1: string; Text2: string; Color: TColor; nline: Integer):
   Boolean;
@@ -96,11 +97,33 @@ begin
   Form1.redt1.SelAttributes.Color := Color;
   if nline <> 0 then Form1.redt1.Lines.Add('');
   if Text1 <> '' then Form1.redt1.Lines.Add(Text1);
+  Form1.redt1.SelAttributes.Color := clBlack;
   if Text2 <> '' then Form1.redt1.Lines.Add(Text2);
   Result := True;
 end;
 
-//Убираем последний символ "\" из строки
+// Удаление папки.
+function eraseD(Dir: string): Integer;
+var
+  ddtr: TSHFileOpStruct;
+begin
+  ZeroMemory(@ddtr, SizeOf(ddtr));
+  with ddtr do
+  begin
+    wFunc := FO_DELETE;
+    fFlags := FOF_NOCONFIRMATION or FOF_SILENT;
+    pFrom := PChar(wPath + '\' + Dir + #0);
+  end;
+  if SHFileOperation(ddtr) <> 0 then
+  begin
+    Result := 1;
+    RaiseLastOSError;
+  end
+  else
+    Result := 0;
+end;
+
+//Убираем весь текст после последнего символа "\"
 function PNFN(Text: string): string;
 var
   S, I: Integer;
@@ -146,6 +169,45 @@ begin
     end;
   end;
   Result := tR;
+end;
+
+//Проверка папки на наличие нужных файлов и не пустая ли она.
+function check_eDir(dirname: string): Integer;
+var
+  sr2, ff: TSearchRec;
+  noempty: Boolean;
+  tile: Boolean;
+begin
+  noempty := False;
+  tile := False;
+  if FindFirst(wPath + dirname + '\*', faAnyFile, sr2) = 0 then
+  begin
+    repeat
+      if (sr2.Attr <> 0) then
+      begin
+        if (sr2.Name <> '.') and (sr2.Name <> '..') then
+        begin
+          noempty := True;
+          if FindFirst(wPath + dirname + '\tile_*_*.png', faAnyFile, ff) = 0 then tile := True;
+          FindClose(ff);
+        end;
+      end;
+    until ((FindNext(sr2) <> 0) or (noempty) or (tile));
+    FindClose(sr2);
+  end;
+
+  // если 0 - папка содержит файлы попадающие под маску 'tile_*_*.png'
+  // если 1 - папка содержит файлы не попадающие под маску 'tile_*_*.png'
+  // если 2 - папка пуста
+  if (noempty) then
+  begin
+    if (tile) then
+    begin
+      Result := 0;
+    end
+    else Result := 1;
+  end
+  else Result := 2;
 end;
 
 //Подсчёт количества папок в выбранной папке.
@@ -222,7 +284,7 @@ begin
   bf2.X := 0;
   bf2.Y := 0;
   bf2.S := '';
-  if FindFirst(wpath + dirname + '\tile_*_*.png', faAnyFile, sr2) = 0 then
+  if FindFirst(wPath + dirname + '\tile_*_*.png', faAnyFile, sr2) = 0 then
   begin
     repeat
       if sr2.Attr <> 0 then
@@ -271,34 +333,42 @@ var
   r: string;
 begin
   i := 0;
-  if FindFirst(wpath + '*', faAnyFile, sr3) = 0 then
+  if FindFirst(wPath + '*', faAnyFile, sr3) = 0 then
   begin
     repeat
       if (sr3.Attr and faDirectory) <> 0 then
       begin
         if (sr3.Name <> '.') and (sr3.Name <> '..') then
         begin
-          r := calcArr(sr3.Name).S;
-          if (bf2.Hmin <> 2147483647) then
+          if (check_eDir(sr3.Name) = 0) then
           begin
-            if r = 'ERROR' then
+            r := calcArr(sr3.Name).S;
+            if (bf2.Hmin <> 2147483647) then
             begin
-              SendLog(sr3.Name + ': ', 'Возможно не верное количество тайлов !', clRed, 1);
-            end
-            else
-            begin
-              if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                SendLog(sr3.Name + ': ', 'Размер: ' + IntToStr(getCount(bf2.Hmin, bf2.Hmax).Count) + ' x ' +
-                  IntToStr(getCount(bf2.Vmin, bf2.Vmax).Count) + '  (' + r + '  физически.)', clBlue, 1);
-              listWDir[i] := sr3.Name;
-              Inc(i);
-            end;
-            if (Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3) then
-            begin
-              SendLog('', 'X: от ' + IntToStr(bf2.Hmin) + ' до ' + IntToStr(bf2.Hmax), clBlack, 0);
-              SendLog('', 'Y: от ' + IntToStr(bf2.Vmin) + ' до ' + IntToStr(bf2.Vmax), clBlack, 0);
+              if r = 'ERROR' then
+              begin
+                SendLog(sr3.Name + ': ', 'Возможно не верное количество тайлов !', clRed, 1);
+              end
+              else
+              begin
+                if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
+                  SendLog(sr3.Name + ': ', 'Размер: ' + IntToStr(getCount(bf2.Hmin, bf2.Hmax).Count) + ' x ' +
+                    IntToStr(getCount(bf2.Vmin, bf2.Vmax).Count) + '  (' + r + '  физически.)', clBlue, 1);
+                listWDir[i] := sr3.Name;
+                Inc(i);
+              end;
+              if (Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3) then
+              begin
+                SendLog('', 'X: от ' + IntToStr(bf2.Hmin) + ' до ' + IntToStr(bf2.Hmax), clBlack, 0);
+                SendLog('', 'Y: от ' + IntToStr(bf2.Vmin) + ' до ' + IntToStr(bf2.Vmax), clBlack, 0);
+              end;
             end;
           end;
+          if (check_eDir(sr3.Name) = 2) then
+          begin
+            SendLog('Папка ' + sr3.Name + ' пуста, удаляем ... ', '', $00FF8000, 0);
+            eraseD(sr3.Name);
+          end;  
         end;
       end;
     until FindNext(sr3) <> 0;
@@ -619,7 +689,7 @@ begin
       begin
         SendLog('', 'Смещение: X=' + IntToStr(shiftX.Count * shiftX.Sign) + ' Y=' + IntToStr(shiftY.Count * shiftY.Sign),
           clBlack, 0);
-        SendLog('Найдено ' + IntToStr(m) + ' совпадающих тайлов.', '', clBlue, 0);
+        SendLog('Найдено совпадающих тайлов: ' + IntToStr(m), '', clBlue, 0);
       end
       else
       begin
@@ -632,28 +702,6 @@ begin
     Result.XShift := shiftX.Count * shiftX.Sign;
     Result.YShift := shiftY.Count * shiftY.Sign;
   end;
-end;
-
-// Удаление папки.
-function moveR(Dir: string): Integer;
-var
-  ddtr: TSHFileOpStruct;
-begin
-  with ddtr do
-  begin
-    Wnd := Application.Handle;
-    wFunc := FO_DELETE;
-    pFrom := PChar(GetCurrentDir + '\' + Dir);
-    pTo := nil;
-    fFlags := FOF_NOCONFIRMATION or FOF_ALLOWUNDO;
-  end;
-  if SHFileOperation(ddtr) <> 0 then
-  begin
-    Result := 1;
-    RaiseLastOSError;
-  end
-  else
-    Result := 0;
 end;
 
 // Сброс полос прогресса в ноль.
@@ -692,39 +740,52 @@ end;
 //Основная процедура
 procedure TForm1.btn2Click(Sender: TObject);
 var
-  i: Integer;
-  m: TCompRes;
+  i, j, mkm, merge: Integer;
+  compare: TCompRes;
+  dir1, dir2: string;
 begin
   try
     resetG;
     getlistDir();
-    g1.MaxValue := Length(listWDir) - 1;
-    if ((Length(listWDir) - 1) > 0) then
+    g1.MaxValue := Length(listWDir);
+    if ((Length(listWDir) - 1) > 2) then
     begin
       SendLog('Размер массива:', IntToStr(Length(listWDir)), clBlue, 1);
-      for i := 1 to Length(listWDir) - 1 do
+      for i := 0 to Length(listWDir) - 1 do
       begin
-        m.Match := 0;
-        m.XShift := 0;
-        m.YShift := 0;
         if (listWDir[i] <> '') then
         begin
-          //          if (i > 1) then
-          //            m := compDir2(listWDir[0], False, listWDir[i])
-          //          else
-          //            m := compDir2(listWDir[0], True, listWDir[i]);
-          //          if (m.Match > 0) then
-          //          begin
-          //            SendLog('Совмещаем ', listWDir[0] + ' с ' + listWDir[i], clBlack, 0);
-          //            e := merge2Dir(listWDir[0], listWDir[i], m.XShift, m.YShift, False);
-          //            if (e <> -1) and (e <> 0) then
-          //            begin
-          //              SendLog('Данные перенесены, можно удалять.', '', $00FF8000, 0);
-          //              moveR(listWDir[i]);
-          //            end;
-          //          end;
+          repeat
+            mkm := 0;
+            for j := (i+1) to Length(listWDir) - 1 do
+            begin
+              if (listWDir[j] <> '') then
+              begin
+                compare.Match := 0;
+                compare.XShift := 0;
+                compare.YShift := 0;
+                dir1 := listWDir[i];
+                dir2 := listWDir[j];
+                compare := compDir2(listWDir[i], True, listWDir[j]);
+                if (compare.Match > 0) then
+                begin
+                  SendLog('Совмещаем ', listWDir[i] + ' с ' + listWDir[j], clBlack, 0);
+                  merge := merge2Dir(listWDir[i], listWDir[j], compare.XShift, compare.YShift, False);
+                  if (merge <> -1) and (merge <> 0) then
+                  begin
+                    SendLog('Данные перенесены успешно, удаляем директорию '+listWDir[j], '', $00FF8000, 0);
+                    eraseD(listWDir[j]);
+                    listWDir[j] := '';
+                    mkm := mkm + 1;
+                  end;
+                end;
+              end;
+              Application.ProcessMessages;
+            end;
+          until mkm = 0;
         end;
-        g1.Progress := i;
+        g1.Progress := i+2;
+        Application.ProcessMessages;
       end;
     end;
     g1.ForeColor := clGreen;

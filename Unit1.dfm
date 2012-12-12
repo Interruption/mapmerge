@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 704
-  Top = 400
+  Left = 721
+  Top = 169
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'Simple MapMerger'
@@ -95,7 +95,7 @@ object Form1: TForm1
     Top = 0
     Width = 97
     Height = 17
-    Hint = '[x]: MD5'#13#10'[  ]: CRC32|Checked: MD5'#13#10'UnChecked: CRC32'
+    Hint = '[v]: MD5'#13#10'[  ]: CRC32|Checked: MD5'#13#10'UnChecked: CRC32'
     Caption = 'MD5 / CRC32'
     Checked = True
     ParentShowHint = False
