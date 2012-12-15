@@ -21,7 +21,7 @@ type
     grp1: TGroupBox;
     trckbr1: TTrackBar;
     lbl4: TLabel;
-    chk2: TCheckBox;
+    lbl5: TLabel;
     procedure btn1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure btn2Click(Sender: TObject);
@@ -565,60 +565,8 @@ begin
   end;
 end;
 
-//Поиск совпадений (без массивов)(старый)
-function compDir(dirname1: string; dirname2: string): string;
-var
-  sr4, sr5: TSearchRec;
-  hash_1, hash_2: string;
-  shiftX, shiftY: Integer;
-  f1, f2: TCoordRec;
-  c, b, ok: Integer;
-begin
-  c := 0;
-  b := 0;
-  ok := 0;
-  SendLog('--------------------------------------', '', clRed, 1);
-  SendLog('Сравниваем: ', dirname1 + ' с ' + dirname2, clRed, 1);
-  if FindFirst(wpath + dirname1 + '\tile_*_*.png', faAnyFile, sr4) = 0 then
-  begin
-    repeat
-      if sr4.Attr <> 0 then
-      begin
-        hash_1 := hashcalc(wpath + dirname1 + '\' + sr4.Name);
-        b := b + 1;
-        Form1.lbl1.Caption := IntToStr(b);
-        if FindFirst(wpath + dirname2 + '\tile_*_*.png', faAnyFile, sr5) = 0 then
-        begin
-          repeat
-            if sr5.Attr <> 0 then
-            begin
-              hash_2 := hashcalc(wpath + dirname2 + '\' + sr5.Name);
-              if hash_2 = hash_1 then
-              begin
-                f1 := getFCoord(sr4.Name);
-                f2 := getFCoord(sr5.Name);
-                shiftX := getCount(f1.Horizontal, f2.Horizontal).Count - 1;
-                shiftY := getCount(f1.Vertical, f2.Vertical).Count - 1;
-                SendLog('', 'Файл_1:  ' + sr4.Name + '  ' + '(' + hash_1 + ')', clBlue, 1);
-                SendLog('', 'Файл_2:  ' + sr5.Name + '  ' + '(' + hash_2 + ')', clBlue, 0);
-                SendLog('', 'Смещение:  X= ' + IntToStr(shiftX) + '  Y= ' + IntToStr(shiftY), clBlack, 0);
-                ok := ok + 1;
-              end;
-              c := c + 1;
-              Form1.lbl2.Caption := IntToStr(c) + ' ok=' + IntToStr(ok);
-            end;
-          until (FindNext(sr5) <> 0) or (ok > 1);
-          FindClose(sr5);
-        end;
-      end;
-      Application.ProcessMessages;
-    until (FindNext(sr4) <> 0) or (ok > 1);
-    FindClose(sr4);
-  end;
-end;
-
 //Поиск совпадений (с использованием массивов)
-function compDir2(DirName1: string; Fill1: Boolean; DirName2: string): TCompRes;
+function compDir2(DirName1: string; Fill1: Boolean; DirName2: string; MCount: Integer): TCompRes;
 var
   Err, b, m, i, j: Integer;
   f1, f2: TCoordRec;
@@ -650,7 +598,7 @@ begin
       Form1.lbl1.Caption := 'Файлы = ' + IntToStr(b);
       for j := 0 to Length(arrF2) - 1 do
       begin
-        if (Form1.chk2.State = cbChecked) and (m = 3) then Break;
+        if (m > MCount-1) then Break;
         if (arrF1[i, 1] = arrF2[j, 1]) then
         begin
           f1 := getFCoord(arrF1[i, 0]);
@@ -737,36 +685,64 @@ begin
   countDir();
 end;
 
+//Факториал
+function fact(n: Integer): Integer;
+var
+  f: Integer;
+  i: Integer;
+begin
+  f := 0;
+  for i := 1 to n do
+    f := f + (n - i);
+  Result := f;
+end;
+
 //Основная процедура
 procedure TForm1.btn2Click(Sender: TObject);
 var
-  i, j, mkm, merge: Integer;
+  i, j, l, mkm, merge: Integer;
+  f1, mkmp: Integer;
   compare: TCompRes;
-  dir1, dir2: string;
+  //dir1, dir2: string;
 begin
   try
     resetG;
     getlistDir();
-    g1.MaxValue := Length(listWDir);
-    if ((Length(listWDir) - 1) > 2) then
+    f1 := -1;
+    mkmp := -1;
+    l := Length(listWDir);
+    g1.MaxValue := fact(l);
+    lbl5.Caption := IntToStr(g1.MaxValue) + ' / ' + IntToStr(g1.Progress);
+    if ((l - 1) > 2) then
     begin
-      SendLog('Размер массива:', IntToStr(Length(listWDir)), clBlue, 1);
-      for i := 0 to Length(listWDir) - 1 do
+      SendLog('Размер массива:', IntToStr(l), clBlue, 1);
+      for i := 0 to l - 1 do
       begin
         if (listWDir[i] <> '') then
         begin
           repeat
             mkm := 0;
-            for j := (i+1) to Length(listWDir) - 1 do
+            for j := (i+1) to l - 1 do
             begin
+              if (g1.Progress < g1.MaxValue - 1) then g1.Progress := g1.Progress + 1;
+              lbl5.Caption := IntToStr(g1.MaxValue) + ' / ' + IntToStr(g1.Progress);
               if (listWDir[j] <> '') then
               begin
                 compare.Match := 0;
                 compare.XShift := 0;
                 compare.YShift := 0;
-                dir1 := listWDir[i];
-                dir2 := listWDir[j];
-                compare := compDir2(listWDir[i], True, listWDir[j]);
+                //dir1 := listWDir[i];
+                //dir2 := listWDir[j];
+                if ((f1 = i) and (mkmp = mkm)) then
+                begin
+                  compare := compDir2(listWDir[i], False, listWDir[j], 3);
+                end
+                else
+                begin
+                  compare := compDir2(listWDir[i], True, listWDir[j], 3);
+                end;
+                f1 := i;
+                mkmp := mkm;
                 if (compare.Match > 0) then
                 begin
                   SendLog('Совмещаем ', listWDir[i] + ' с ' + listWDir[j], clBlack, 0);
@@ -778,13 +754,16 @@ begin
                     listWDir[j] := '';
                     mkm := mkm + 1;
                   end;
-                end;
+                end
+                else
+                begin
+                  SendLog('Совпадений нет.', '', $00FF8000, 0);
+                end;  
               end;
               Application.ProcessMessages;
             end;
           until mkm = 0;
         end;
-        g1.Progress := i+2;
         Application.ProcessMessages;
       end;
     end;
@@ -794,6 +773,7 @@ begin
     SetLength(arrF2, 1, 1);
     //SetLength(listWDir, 1);
     SetLength(listS, 1);
+    g1.Progress := g1.Progress + 1;
   end;
 end;
 

@@ -1,6 +1,7 @@
 object Form1: TForm1
-  Left = 721
-  Top = 169
+  Left = 670
+  Top = 308
+  AutoSize = True
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'Simple MapMerger'
@@ -43,6 +44,12 @@ object Form1: TForm1
     Color = clBtnFace
     ParentColor = False
     Progress = 0
+  end
+  object lbl5: TLabel
+    Left = 176
+    Top = 39
+    Width = 3
+    Height = 13
   end
   object redt1: TRichEdit
     Left = 0
@@ -138,27 +145,6 @@ object Form1: TForm1
       TabOrder = 0
       ThumbLength = 10
     end
-  end
-  object chk2: TCheckBox
-    Left = 368
-    Top = 16
-    Width = 97
-    Height = 17
-    Hint = 
-      #1054#1075#1088#1072#1085#1080#1095#1077#1085#1080#1077' '#1087#1086#1080#1089#1082#1072' '#1089#1086#1074#1087#1072#1076#1077#1085#1080#1081' 3-'#1084#1103' '#1092#1072#1081#1083#1072#1084#1080'.'#13#10#1042' '#1089#1074#1103#1079#1080' '#1089' '#1085#1077' '#1087#1086#1083#1085#1086#1081 +
-      ' '#1087#1088#1086#1074#1077#1088#1082#1086#1081', '#1074#1086#1079#1084#1086#1078#1085#1086' '#1074#1086#1079#1085#1080#1082#1085#1086#1074#1077#1085#1080#1077' '#1086#1096#1080#1073#1086#1082' !!!|'#1054#1075#1088#1072#1085#1080#1095#1077#1085#1080#1077' '#1087#1086#1080#1089#1082#1072 +
-      ' '#1089#1086#1074#1087#1072#1076#1077#1085#1080#1081' 3-'#1084#1103' '#1092#1072#1081#1083#1072#1084#1080'.'#13#10#1042' '#1089#1074#1103#1079#1080' '#1089' '#1085#1077' '#1087#1086#1083#1085#1086#1081' '#1087#1088#1086#1074#1077#1088#1082#1086#1081', '#1074#1086#1079#1084#1086#1078 +
-      #1085#1086' '#1074#1086#1079#1085#1080#1082#1085#1086#1074#1077#1085#1080#1077' '#1086#1096#1080#1073#1086#1082' !!!'
-    Caption = 'Hardcap (3)'
-    Font.Charset = DEFAULT_CHARSET
-    Font.Color = clRed
-    Font.Height = -11
-    Font.Name = 'MS Sans Serif'
-    Font.Style = []
-    ParentFont = False
-    ParentShowHint = False
-    ShowHint = True
-    TabOrder = 6
   end
   object dlgOpen1: TOpenDialog
     FileName = 'Ignored ...'
