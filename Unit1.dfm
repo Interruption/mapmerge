@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 670
-  Top = 308
+  Left = 664
+  Top = 125
   AutoSize = True
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle

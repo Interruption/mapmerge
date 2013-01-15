@@ -211,7 +211,7 @@ begin
 end;
 
 //Подсчёт количества папок в выбранной папке.
-function countDir(): Integer;
+function countDir(s: Integer): Integer;
 var
   sr1: TSearchRec;
   cdir: Integer;
@@ -670,7 +670,7 @@ begin
     wPath := PNFN(dlgOpen1.Files.Text);
     SendLog('Рабочая папка: ', '"' + wPath + '"', clGreen, 1);
     dPath := PNFN(dlgOpen1.Files.Text);
-    countDir();
+    //countDir();
     btn1.Caption := 'Work Dir (Selected)';
   end;
 end;
@@ -693,24 +693,26 @@ var
 begin
   f := 0;
   for i := 1 to n do
-    f := f + (n - i);
+    f := f + (n- i);
   Result := f;
 end;
 
 //Основная процедура
 procedure TForm1.btn2Click(Sender: TObject);
 var
-  i, j, l, mkm, merge: Integer;
+  i, j, l, mkm, merge, mx: Integer;
   f1, mkmp: Integer;
   compare: TCompRes;
   //dir1, dir2: string;
 begin
   try
+    countDir();
     resetG;
     getlistDir();
     f1 := -1;
     mkmp := -1;
     l := Length(listWDir);
+    mx := l;
     g1.MaxValue := fact(l);
     lbl5.Caption := IntToStr(g1.MaxValue) + ' / ' + IntToStr(g1.Progress);
     if ((l - 1) > 2) then
@@ -724,10 +726,10 @@ begin
             mkm := 0;
             for j := (i+1) to l - 1 do
             begin
-              if (g1.Progress < g1.MaxValue - 1) then g1.Progress := g1.Progress + 1;
-              lbl5.Caption := IntToStr(g1.MaxValue) + ' / ' + IntToStr(g1.Progress);
               if (listWDir[j] <> '') then
               begin
+                g1.Progress := g1.Progress + 1;
+                lbl5.Caption := IntToStr(fact(l)) + '(' + IntToStr(fact(mx)) + ')' + ' / ' + IntToStr(g1.Progress);
                 compare.Match := 0;
                 compare.XShift := 0;
                 compare.YShift := 0;
@@ -753,6 +755,8 @@ begin
                     eraseD(listWDir[j]);
                     listWDir[j] := '';
                     mkm := mkm + 1;
+                    mx := mx-1;
+                    g1.MaxValue := fact(mx)+g1.Progress;
                   end;
                 end
                 else
@@ -773,7 +777,8 @@ begin
     SetLength(arrF2, 1, 1);
     //SetLength(listWDir, 1);
     SetLength(listS, 1);
-    g1.Progress := g1.Progress + 1;
+    g1.Progress := g1.MaxValue;
+    SendLog('Совмещение папок закончено', '', $00168000, 1);
   end;
 end;
 
