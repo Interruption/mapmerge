@@ -75,6 +75,7 @@ type
 
 type
   TSArray = array of array of string;
+  TGetDirSizeCallback = procedure(Tag: Integer; CurrentSize: Int64);
 
 var
   Form1: TForm1;
@@ -88,6 +89,46 @@ var
 implementation
 
 {$R *.dfm}
+
+procedure GetDirSize(Dir: string; IncludeSubDirs: Boolean; var Result: Int64;
+  CallbackProc: TGetDirSizeCallback = nil; CallbackTag: Integer = 0); overload;
+var
+  SearchRec: TSearchRec;
+  FindResult: Integer;
+  sz: Int64;
+begin
+  sz := 0;
+  Dir := IncludeTrailingPathDelimiter(Dir);
+  FindResult := FindFirst(Dir + '*.*', faAnyFile, SearchRec);
+  try
+    while FindResult = 0 do
+      with SearchRec do
+      begin
+        if (Attr and faDirectory) <> 0 then
+        begin
+          if IncludeSubDirs and (Name <> '.') and (Name <> '..') then
+            GetDirSize(Dir + Name, IncludeSubDirs, Result, CallbackProc,
+              CallbackTag);
+        end
+        else
+        begin
+          sz := sz + Size;
+          if Assigned(CallbackProc) then
+            CallbackProc(CallbackTag, Result);
+        end;
+        FindResult := FindNext(SearchRec);
+      end;
+  finally
+    FindClose(SearchRec);
+  end;
+  Result := sz;
+end;
+
+function GetDirSize(Dir: string; IncludeSubDirs: Boolean = True): Int64;
+  overload;
+begin
+  GetDirSize(Dir, IncludeSubDirs, Result, nil, 0);
+end;
 
 //Функция записи в лог.
 function SendLog(Text1: string; Text2: string; Color: TColor; nline: Integer):
@@ -232,8 +273,10 @@ begin
     until FindNext(sr1) <> 0;
     FindClose(sr1);
   end;
-  SetLength(listWDir, cdir);
-  SendLog('Папки для поиска тайлов: ', IntToStr(cdir), clGreen, 1);
+  case s of
+    0: SendLog('Папки для поиска тайлов: ', IntToStr(cdir), clGreen, 1);
+    1: SendLog('Количество подпапок: ', IntToStr(cdir), clGreen, 1);
+  end;
   Result := cdir;
 end;
 
@@ -330,7 +373,8 @@ function getlistDir(): Integer;
 var
   sr3: TSearchRec;
   i, j: Integer;
-  r: string;
+  r, szp: string;
+  sz: Int64;
 begin
   i := 0;
   if FindFirst(wPath + '*', faAnyFile, sr3) = 0 then
@@ -380,7 +424,26 @@ begin
     SendLog('Анализируем папки - ' + IntToStr(i) + ' шт. : ', '', clGreen, 1);
     for j := 0 to i - 1 do
     begin
-      SendLog('', listWDir[j], clBlack, 0);
+      sz := GetDirSize(IncludeTrailingPathDelimiter(wPath)+listWDir[j], True);
+      case sz of
+        0..1023: szp := 'byte';
+        1024..1048575:
+          begin
+            szp := 'Kb';
+            sz := Round(sz/1024);
+          end;
+        1048576..1073741823:
+          begin
+            szp := 'Mb';
+            sz := Round(sz/1048576);
+          end;
+      else
+        begin
+          szp := 'Gb';
+          sz := Round(sz/1073741824);
+        end;
+      end;
+      SendLog('', listWDir[j] + '   ' + IntToStr(sz) + ' ' + szp, clBlack, 0);
     end;
   end;
   Result := 0;
@@ -670,7 +733,7 @@ begin
     wPath := PNFN(dlgOpen1.Files.Text);
     SendLog('Рабочая папка: ', '"' + wPath + '"', clGreen, 1);
     dPath := PNFN(dlgOpen1.Files.Text);
-    //countDir();
+    countDir(1);
     btn1.Caption := 'Work Dir (Selected)';
   end;
 end;
@@ -682,11 +745,11 @@ begin
   wPath := GetCurrentDir() + '\';
   SendLog('Рабочая папка: ', '"' + wPath + '"', clGreen, 1);
   dpath := GetCurrentDir() + '\';
-  countDir();
+  countDir(1);
 end;
 
-//Факториал
-function fact(n: Integer): Integer;
+//Количество комбинаций
+function comb(n: Integer): Integer;
 var
   f: Integer;
   i: Integer;
@@ -706,14 +769,15 @@ var
   //dir1, dir2: string;
 begin
   try
-    countDir();
+    redt1.SetFocus;
+    SetLength(listWDir, countDir(0));
     resetG;
     getlistDir();
     f1 := -1;
     mkmp := -1;
     l := Length(listWDir);
     mx := l;
-    g1.MaxValue := fact(l);
+    g1.MaxValue := comb(l);
     lbl5.Caption := IntToStr(g1.MaxValue) + ' / ' + IntToStr(g1.Progress);
     if ((l - 1) > 2) then
     begin
@@ -729,7 +793,7 @@ begin
               if (listWDir[j] <> '') then
               begin
                 g1.Progress := g1.Progress + 1;
-                lbl5.Caption := IntToStr(fact(l)) + '(' + IntToStr(fact(mx)) + ')' + ' / ' + IntToStr(g1.Progress);
+                lbl5.Caption := IntToStr(comb(l)) + '(' + IntToStr(comb(mx)) + ')' + ' / ' + IntToStr(g1.Progress);
                 compare.Match := 0;
                 compare.XShift := 0;
                 compare.YShift := 0;
@@ -756,7 +820,7 @@ begin
                     listWDir[j] := '';
                     mkm := mkm + 1;
                     mx := mx-1;
-                    g1.MaxValue := fact(mx)+g1.Progress;
+                    g1.MaxValue := comb(mx)+g1.Progress;
                   end;
                 end
                 else
@@ -778,7 +842,7 @@ begin
     //SetLength(listWDir, 1);
     SetLength(listS, 1);
     g1.Progress := g1.MaxValue;
-    SendLog('Совмещение папок закончено', '', $00168000, 1);
+    SendLog('Совмещение папок закончено.', '', $00168000, 1);
   end;
 end;
 
