@@ -4,7 +4,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ComCtrls, md5, Math, CRCunit, Gauges, ShellAPI;
+  Dialogs, StdCtrls, ComCtrls, md5, Math, CRCunit, Gauges, ShellAPI,
+  ExtCtrls;
 
 type
   TForm1 = class(TForm)
@@ -85,6 +86,7 @@ var
   arrF1: TSArray;
   arrF2: TSArray;
   bf2: TArrInfo;
+  int: Boolean;
 
 implementation
 
@@ -131,15 +133,18 @@ begin
 end;
 
 //Функция записи в лог.
-function SendLog(Text1: string; Text2: string; Color: TColor; nline: Integer):
+function SendLog(Text1: string; Text2: string; Color: TColor; nline: Integer; LogLevel: Integer):
   Boolean;
 begin
-  //if Color = '' then Color:= clBlack;
-  Form1.redt1.SelAttributes.Color := Color;
-  if nline <> 0 then Form1.redt1.Lines.Add('');
-  if Text1 <> '' then Form1.redt1.Lines.Add(Text1);
-  Form1.redt1.SelAttributes.Color := clBlack;
-  if Text2 <> '' then Form1.redt1.Lines.Add(Text2);
+  if Form1.trckbr1.Position >= LogLevel then
+  begin
+    //if Color = '' then Color:= clBlack;
+    Form1.redt1.SelAttributes.Color := Color;
+    if nline <> 0 then Form1.redt1.Lines.Add('');
+    if Text1 <> '' then Form1.redt1.Lines.Add(Text1);
+    Form1.redt1.SelAttributes.Color := clBlack;
+    if Text2 <> '' then Form1.redt1.Lines.Add(Text2);
+  end;
   Result := True;
 end;
 
@@ -260,22 +265,22 @@ begin
   cdir := 0;
   if FindFirst(wPath + '*', faAnyFile, sr1) = 0 then
   begin
-    if Form1.trckbr1.Position = 3 then SendLog('Список папок: ', '', clBlue, 1);
+    SendLog('Список папок: ', '', clBlue, 1, 1);
     repeat
       if (sr1.Attr and faDirectory) <> 0 then
       begin
         if (sr1.Name <> '.') and (sr1.Name <> '..') then
         begin
           cdir := cdir + 1;
-          if Form1.trckbr1.Position = 3 then SendLog('', sr1.Name, clBlack, 0);
+          SendLog('', sr1.Name, clBlack, 0, 1);
         end;
       end;
     until FindNext(sr1) <> 0;
     FindClose(sr1);
   end;
   case s of
-    0: SendLog('Папки для поиска тайлов: ', IntToStr(cdir), clGreen, 1);
-    1: SendLog('Количество подпапок: ', IntToStr(cdir), clGreen, 1);
+    0: SendLog('Папки для поиска тайлов: ', IntToStr(cdir), clGreen, 1, 1);
+    1: SendLog('Количество подпапок: ', IntToStr(cdir), clGreen, 1, 1);
   end;
   Result := cdir;
 end;
@@ -391,26 +396,22 @@ begin
             begin
               if r = 'ERROR' then
               begin
-                SendLog(sr3.Name + ': ', 'Возможно не верное количество тайлов !', clRed, 1);
+                SendLog(sr3.Name + ': ', 'Возможно не верное количество тайлов! Папка исключена из обработки.', clRed, 1, 0);
               end
               else
               begin
-                if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                  SendLog(sr3.Name + ': ', 'Размер: ' + IntToStr(getCount(bf2.Hmin, bf2.Hmax).Count) + ' x ' +
-                    IntToStr(getCount(bf2.Vmin, bf2.Vmax).Count) + '  (' + r + '  физически.)', clBlue, 1);
+                SendLog(sr3.Name + ': ', 'Размер: ' + IntToStr(getCount(bf2.Hmin, bf2.Hmax).Count) + ' x ' +
+                    IntToStr(getCount(bf2.Vmin, bf2.Vmax).Count) + '  (' + r + '  физически.)', clBlue, 1, 3);
                 listWDir[i] := sr3.Name;
                 Inc(i);
               end;
-              if (Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3) then
-              begin
-                SendLog('', 'X: от ' + IntToStr(bf2.Hmin) + ' до ' + IntToStr(bf2.Hmax), clBlack, 0);
-                SendLog('', 'Y: от ' + IntToStr(bf2.Vmin) + ' до ' + IntToStr(bf2.Vmax), clBlack, 0);
-              end;
+              SendLog('', 'X: от ' + IntToStr(bf2.Hmin) + ' до ' + IntToStr(bf2.Hmax), clBlack, 0, 3);
+              SendLog('', 'Y: от ' + IntToStr(bf2.Vmin) + ' до ' + IntToStr(bf2.Vmax), clBlack, 0, 3);
             end;
           end;
           if (check_eDir(sr3.Name) = 2) then
           begin
-            SendLog('Папка ' + sr3.Name + ' пуста, удаляем ... ', '', $00FF8000, 0);
+            SendLog('Папка ' + sr3.Name + ' пуста, удаляем ... ', '', $00FF8000, 0, 1);
             eraseD(sr3.Name);
           end;  
         end;
@@ -421,7 +422,7 @@ begin
   if i > 0 then
   begin
     SetLength(listWDir, i);
-    SendLog('Анализируем папки - ' + IntToStr(i) + ' шт. : ', '', clGreen, 1);
+    SendLog('Анализируем папки - ' + IntToStr(i) + ' шт.', '', clGreen, 1, 0);
     for j := 0 to i - 1 do
     begin
       sz := GetDirSize(IncludeTrailingPathDelimiter(wPath)+listWDir[j], True);
@@ -443,7 +444,7 @@ begin
           sz := Round(sz/1073741824);
         end;
       end;
-      SendLog('', listWDir[j] + '   ' + IntToStr(sz) + ' ' + szp, clBlack, 0);
+      SendLog('', listWDir[j] + '   ' + IntToStr(sz) + ' ' + szp, clBlack, 0, 1);
     end;
   end;
   Result := 0;
@@ -481,10 +482,10 @@ begin
   end;
   if Form1.trckbr1.Position = 3 then
   begin
-    SendLog('Массив:', DirName, clBlue, 1);
+    SendLog('Массив:', DirName, clBlue, 1, 3);
     for i := 0 to Length(wArray) - 1 do
     begin
-      SendLog('', 'Имя: ' + wArray[i, 0] + '   Контрольная сумма: ' + wArray[i, 1], clBlack, 0);
+      SendLog('', 'Имя: ' + wArray[i, 0] + '   Контрольная сумма: ' + wArray[i, 1], clBlack, 0, 3);
     end;
   end;
   Result := Length(wArray);
@@ -514,34 +515,33 @@ begin
             fd := fs;
             if (FileExists(Dest + '\' + fd)) then
             begin
-              if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                SendLog('Пытаемся заменить файл: ', fd, clRed, 1);
-              if (Form1.trckbr1.Position = 3) then SendLog('', Source + '\' + fs + ' >>> ' + Dest + '\' + fd, clBlack, 0);
+              SendLog('Пытаемся заменить файл: ', fd, clRed, 1, 2);
+              SendLog('', Source + '\' + fs + ' >>> ' + Dest + '\' + fd, clBlack, 0, 3);
               c := CopyFileEx(PChar(Source + '\' + fs), PChar(Dest + '\' + fd), nil, nil, nil, null);
               if c then
               begin
-                SendLog('Заменили ...', '', clGreen, 0);
+                SendLog('Заменили ...', '', clGreen, 0, 1);
                 if r <> 0 then r := 1;
               end
               else
               begin
-                SendLog('Заменть не удалось :( ...', '', clRed, 0);
+                SendLog('Заменть не удалось :( ...', '', clRed, 0, 1);
                 r := 0;
               end;
             end
             else
             begin
-              SendLog('Пытаемся скопировать файл: ', fs + ' >>> ' + fd, clGreen, 1);
-              if (Form1.trckbr1.Position = 3) then SendLog('', Source + '\' + fs + ' >>> ' + Dest + '\' + fd, clBlack, 0);
+              SendLog('Пытаемся скопировать файл: ', fs + ' >>> ' + fd, clGreen, 1, 1);
+              SendLog('', Source + '\' + fs + ' >>> ' + Dest + '\' + fd, clBlack, 0, 3);
               c := CopyFileEx(PChar(Source + '\' + fs), PChar(Dest + '\' + fd), nil, nil, nil, COPY_FILE_FAIL_IF_EXISTS);
               if c then
               begin
-                SendLog('Скопировали ...', '', clGreen, 0);
+                SendLog('Скопировали ...', '', clGreen, 0, 1);
                 if r <> 0 then r := 1;
               end
               else
               begin
-                SendLog('Скопировать не получилось :( ...', '', clRed, 0);
+                SendLog('Скопировать не получилось :( ...', '', clRed, 0, 1);
                 r := 0;
               end;
 
@@ -567,52 +567,44 @@ begin
             fd := 'tile_' + IntToStr(os.Horizontal - oH) + '_' + IntToStr(os.Vertical - oV) + '.png';
             if (FileExists(Dest + '\' + fd)) then
             begin
-              if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                SendLog('Пытаемся заменить файл: ', fd, clRed, 1);
-              if (Form1.trckbr1.Position = 3) then
-                SendLog('', '(' + fs + ' [' + DateTimeToStr(FileDateToDateTime(FileAge(Source + '\' + fs))) + '] ' + ' >>> ' +
+              SendLog('Пытаемся заменить файл: ', fd, clRed, 1, 2);
+              SendLog('', '(' + fs + ' [' + DateTimeToStr(FileDateToDateTime(FileAge(Source + '\' + fs))) + '] ' + ' >>> ' +
                   fd
-                  + ' [' + DateTimeToStr(FileDateToDateTime(FileAge(Dest + '\' + fd))) + '] ' + ')', clBlack, 0);
+                  + ' [' + DateTimeToStr(FileDateToDateTime(FileAge(Dest + '\' + fd))) + '] ' + ')', clBlack, 0, 3);
               if (FileAge(Source + '\' + fs) > FileAge(Dest + '\' + fd)) then
               begin
                 c := CopyFileEx(PChar(Source + '\' + fs), PChar(Dest + '\' + fd), nil, nil, nil, 0);
                 if c then
                 begin
-                  if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                    SendLog('Заменили ...', '', clGreen, 0);
+                  SendLog('Заменили ...', '', clGreen, 0, 2);
                   if r <> 0 then r := 1;
                 end
                 else
                 begin
-                  if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                    SendLog('Заменть не удалось :( ...', '', clRed, 0);
+                  SendLog('Заменть не удалось :( ...', '', clRed, 0, 2);
                   r := 0;
                 end;
 
               end
               else
               begin
-                if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                  SendLog('Есть более новый, не копируем.', '', clGreen, 0);
+                SendLog('Есть более новый, не копируем.', '', clGreen, 0, 2);
                 if r <> 0 then r := 1;
               end;
             end
             else
             begin
-              if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                SendLog('Пытаемся скопировать файл: ', fs + ' >>> ' + fd, clGreen, 1);
-              if (Form1.trckbr1.Position = 3) then SendLog('', '(' + fs + ' >>> ' + fd + ')', clBlack, 0);
+              SendLog('Пытаемся скопировать файл: ', fs + ' >>> ' + fd, clGreen, 1, 2);
+              SendLog('', '(' + fs + ' >>> ' + fd + ')', clBlack, 0, 3);
               c := CopyFileEx(PChar(Source + '\' + fs), PChar(Dest + '\' + fd), nil, nil, nil, COPY_FILE_FAIL_IF_EXISTS);
               if c then
               begin
-                if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                  SendLog('Скопировали ...', '', clGreen, 0);
+                SendLog('Скопировали ...', '', clGreen, 0, 2);
                 if r <> 0 then r := 1;
               end
               else
               begin
-                if ((Form1.trckbr1.Position = 2) or (Form1.trckbr1.Position = 3)) then
-                  SendLog('Скопировать не получилось :( ...', '', clRed, 0);
+                SendLog('Скопировать не получилось :( ...', '', clRed, 0, 2);
                 r := 0;
               end;
 
@@ -653,8 +645,8 @@ begin
     //    m := 0;
     //    shiftX := 0;
     //    shiftY := 0;
-    SendLog('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<', '', clRed, 1);
-    SendLog('Сравниваем: ', DirName1 + ' с ' + DirName2, clRed, 1);
+    SendLog('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<', '', clRed, 1, 1);
+    SendLog('Сравниваем: ', DirName1 + ' с ' + DirName2, clRed, 1, 0);
     for i := 0 to Length(arrF1) - 1 do
     begin
       b := b + 1;
@@ -674,20 +666,17 @@ begin
             begin
               Err := 1;
               SendLog('Смещение: X=' + IntToStr((shiftX2.Count - 1) * shiftX2.Sign) + ' Y=' + IntToStr((shiftY2.Count - 1) *
-                shiftY2.Sign), '', clBlack, 0);
+                shiftY2.Sign), '', clBlack, 0, 1);
             end;
           end;
           shiftX := getCount(f1.Horizontal, f2.Horizontal);
           shiftY := getCount(f1.Vertical, f2.Vertical);
           shiftX.Count := shiftX.Count - 1;
           shiftY.Count := shiftY.Count - 1;
-          if Form1.trckbr1.Position = 3 then
-          begin
-            SendLog('File1: ', arrF1[i, 0] + '  ' + arrF1[i, 1], clBlue, 1);
-            SendLog('File2: ', arrF2[j, 0] + '  ' + arrF2[j, 1], clBlue, 0);
-            SendLog('', 'Смещение: X=' + IntToStr(shiftX.Count * shiftX.Sign) + ' Y=' + IntToStr(shiftY.Count *
-              shiftY.Sign), clBlack, 0);
-          end;
+          SendLog('File1: ', arrF1[i, 0] + '  ' + arrF1[i, 1], clBlue, 1, 3);
+          SendLog('File2: ', arrF2[j, 0] + '  ' + arrF2[j, 1], clBlue, 0, 3);
+          SendLog('', 'Смещение: X=' + IntToStr(shiftX.Count * shiftX.Sign) + ' Y=' + IntToStr(shiftY.Count *
+            shiftY.Sign), clBlack, 0, 3);
           m := m + 1;
           Form1.lbl2.Caption := 'Совпадения: ' + IntToStr(m);
           Application.ProcessMessages;
@@ -699,12 +688,12 @@ begin
       if Err = 0 then
       begin
         SendLog('', 'Смещение: X=' + IntToStr(shiftX.Count * shiftX.Sign) + ' Y=' + IntToStr(shiftY.Count * shiftY.Sign),
-          clBlack, 0);
-        SendLog('Найдено совпадающих тайлов: ' + IntToStr(m), '', clBlue, 0);
+          clBlack, 0, 1);
+        SendLog('Найдены совпадающие тайлы.', '', clBlue, 0, 1);
       end
       else
       begin
-        SendLog('Ошибка! У тайлов разное смещение!', '', clRed, 0);
+        SendLog('Ошибка! У тайлов разное смещение!', '', clRed, 0, 0);
         m := -1;
       end;
     end;
@@ -731,7 +720,7 @@ begin
   if dlgOpen1.Files.Text <> '' then
   begin
     wPath := PNFN(dlgOpen1.Files.Text);
-    SendLog('Рабочая папка: ', '"' + wPath + '"', clGreen, 1);
+    SendLog('Рабочая папка: ', '"' + wPath + '"', clGreen, 1, 0);
     dPath := PNFN(dlgOpen1.Files.Text);
     countDir(1);
     btn1.Caption := 'Work Dir (Selected)';
@@ -743,7 +732,7 @@ procedure TForm1.FormCreate(Sender: TObject);
 begin
   redt1.Clear;
   wPath := GetCurrentDir() + '\';
-  SendLog('Рабочая папка: ', '"' + wPath + '"', clGreen, 1);
+  SendLog('Рабочая папка: ', '"' + wPath + '"', clGreen, 1, 0);
   dpath := GetCurrentDir() + '\';
   countDir(1);
 end;
@@ -766,8 +755,12 @@ var
   i, j, l, mkm, merge, mx: Integer;
   f1, mkmp: Integer;
   compare: TCompRes;
+  timeS: TDateTime;
   //dir1, dir2: string;
 begin
+  timeS := Time;
+  int := False;
+  btn2.Enabled := False;
   try
     redt1.SetFocus;
     SetLength(listWDir, countDir(0));
@@ -779,9 +772,11 @@ begin
     mx := l;
     g1.MaxValue := comb(l);
     lbl5.Caption := IntToStr(g1.MaxValue) + ' / ' + IntToStr(g1.Progress);
+    if chk1.Checked = True then SendLog('Используется алгоритм: MD5', '', $00168000, 1, 0) else
+      SendLog('Используется алгоритм: CRC32', '', $00168000, 1, 0);
     if ((l - 1) > 2) then
     begin
-      SendLog('Размер массива:', IntToStr(l), clBlue, 1);
+      SendLog('Размер массива:', IntToStr(l), clBlue, 1, 0);
       for i := 0 to l - 1 do
       begin
         if (listWDir[i] <> '') then
@@ -811,11 +806,11 @@ begin
                 mkmp := mkm;
                 if (compare.Match > 0) then
                 begin
-                  SendLog('Совмещаем ', listWDir[i] + ' с ' + listWDir[j], clBlack, 0);
+                  SendLog('Совмещаем ', listWDir[i] + ' с ' + listWDir[j], clBlack, 0, 1);
                   merge := merge2Dir(listWDir[i], listWDir[j], compare.XShift, compare.YShift, False);
                   if (merge <> -1) and (merge <> 0) then
                   begin
-                    SendLog('Данные перенесены успешно, удаляем директорию '+listWDir[j], '', $00FF8000, 0);
+                    SendLog('Данные перенесены успешно, удаляем директорию '+listWDir[j], '', $00FF8000, 0, 1);
                     eraseD(listWDir[j]);
                     listWDir[j] := '';
                     mkm := mkm + 1;
@@ -825,9 +820,10 @@ begin
                 end
                 else
                 begin
-                  SendLog('Совпадений нет.', '', $00FF8000, 0);
+                  SendLog('Совпадений нет.', '', $00FF8000, 0, 1);
                 end;  
               end;
+              if int = True then Exit;
               Application.ProcessMessages;
             end;
           until mkm = 0;
@@ -842,14 +838,18 @@ begin
     //SetLength(listWDir, 1);
     SetLength(listS, 1);
     g1.Progress := g1.MaxValue;
-    SendLog('Совмещение папок закончено.', '', $00168000, 1);
+    SendLog('Совмещение папок закончено.', '', $00168000, 1, 0);
   end;
+
+  btn2.Enabled := True;
+  SendLog('Времени потрачено: '+TimeToStr(timeS - Time), '', $00168000, 1, 0);
 end;
 
 procedure TForm1.btn3Click(Sender: TObject);
 begin
   redt1.Clear;
 end;
+
 
 end.
 

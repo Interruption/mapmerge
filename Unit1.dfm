@@ -118,11 +118,11 @@ object Form1: TForm1
     Caption = 'Log level '
     TabOrder = 5
     object lbl4: TLabel
-      Left = 6
+      Left = 12
       Top = 32
-      Width = 45
+      Width = 40
       Height = 10
-      Caption = '   1       2      3'
+      Caption = '0    1    2   3'
       Font.Charset = RUSSIAN_CHARSET
       Font.Color = clWindowText
       Font.Height = -8
@@ -137,10 +137,8 @@ object Form1: TForm1
       Height = 18
       Hint = 'Log level'
       Max = 3
-      Min = 1
       ParentShowHint = False
       PageSize = 1
-      Position = 1
       ShowHint = True
       TabOrder = 0
       ThumbLength = 10
